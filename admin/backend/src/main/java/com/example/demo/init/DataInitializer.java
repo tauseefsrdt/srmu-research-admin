@@ -1,7 +1,6 @@
 package com.example.demo.init;
 
 import com.example.demo.entity.AcademicSession;
-import com.example.demo.entity.Institute;
 import com.example.demo.entity.ResearchCategory;
 import com.example.demo.entity.User;
 import com.example.demo.repository.AcademicSessionRepository;
@@ -39,17 +38,32 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) throws Exception {
         log.info("Checking core configuration and admin credentials...");
 
-        // Ensure Default Admin User exists with BCrypt hashed password
-        if (userRepository.findByEmailIgnoreCase("admin@srmu.ac.in").isEmpty()) {
-            User defaultAdmin = new User(
-                    "admin@srmu.ac.in",
-                    "Director Research",
-                    passwordEncoder.encode("admin123456"),
-                    "ROLE_ADMIN",
-                    "Director (Research & Consultancy)");
-            userRepository.save(defaultAdmin);
-            log.info("Default administrator account verified: admin@srmu.ac.in");
-        }
+        // Ensure Default Admin User exists and keep password synced with database
+        String adminEmail = "admin@srmu.ac.in";
+        String adminPassword = "admin123456";
+
+        userRepository.findByEmailIgnoreCase(adminEmail).ifPresentOrElse(
+                admin -> {
+                    admin.setPassword(passwordEncoder.encode(adminPassword));
+                    admin.setName("Director Research");
+                    admin.setDesignation("Director (Research & Consultancy)");
+                    admin.setRole("ROLE_ADMIN");
+                    admin.setActive(true);
+                    userRepository.save(admin);
+                    log.info("Administrator password updated in DB for: {}", adminEmail);
+                },
+                () -> {
+                    User defaultAdmin = new User(
+                            adminEmail,
+                            "Director Research",
+                            passwordEncoder.encode(adminPassword),
+                            "ROLE_ADMIN",
+                            "Director (Research & Consultancy)"
+                    );
+                    userRepository.save(defaultAdmin);
+                    log.info("Default administrator account created: {}", adminEmail);
+                }
+        );
 
         // Ensure Active Academic Sessions exist
         if (academicSessionRepository.findBySessionCodeIgnoreCase("2025-26").isEmpty()) {
