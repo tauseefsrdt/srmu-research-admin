@@ -1,38 +1,60 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '../../api/apiClient';
 import { Book } from '../../types';
-import { books as fallbackBooks } from '../../data/data';
+
+interface FetchBooksParams {
+  sessionCode?: string;
+  search?: string;
+  year?: string;
+  page?: number;
+  size?: number;
+}
 
 interface BooksState {
   items: Book[];
+  totalElements: number;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: BooksState = {
-  items: (fallbackBooks as any[]).map((b, idx) => ({
-    ...b,
-    id: b._id || b.slNo || idx + 1,
-    title: b.paperTitle || b.bookOrChapterTitle || 'Untitled book or chapter',
-    authors: b.teacherName,
-    year: b.yearOfPublication,
-    publisher: b.publisherName,
-    abstract: b.bookOrChapterTitle,
-    isbn: b.isbnIssn,
-  })),
+  items: [],
+  totalElements: 0,
   loading: false,
   error: null,
 };
 
 export const fetchBooks = createAsyncThunk(
   'books/fetchBooks',
-  async (sessionCode: string = '2025-26', { rejectWithValue }) => {
+  async (params: FetchBooksParams | string = {}, { rejectWithValue }) => {
     try {
-      const res = await api.get('/research-items/by-category/BOOK', {
-        params: { sessionCode },
-      });
-      if (res.data?.data && res.data.data.length > 0) {
-        return res.data.data.map((item: any, idx: number) => ({
+      const options: FetchBooksParams =
+        typeof params === 'string' ? { sessionCode: params } : params;
+
+      const hasAdvancedParams = options.search || options.year || (options.page !== undefined);
+
+      let res;
+      if (hasAdvancedParams) {
+        res = await api.get('/research-items', {
+          params: {
+            categoryCode: 'BOOK',
+            sessionCode: options.sessionCode || '2025-26',
+            search: options.search || undefined,
+            year: options.year || undefined,
+            page: options.page ?? 0,
+            size: options.size ?? 500,
+          },
+        });
+      } else {
+        res = await api.get('/research-items/by-category/BOOK', {
+          params: { sessionCode: options.sessionCode || '2025-26' },
+        });
+      }
+
+      const rawList = res.data?.data?.content || res.data?.data || [];
+
+      if (Array.isArray(rawList)) {
+        return rawList.map((item: any, idx: number) => ({
           slNo: item.srNo || idx + 1,
           _id: item.id,
           id: item.id,
@@ -53,7 +75,7 @@ export const fetchBooks = createAsyncThunk(
       }
       return [];
     } catch (err: any) {
-      return rejectWithValue(err.message || 'Failed to fetch books');
+      return rejectWithValue(err.response?.data?.message || err.message || 'Failed to fetch books');
     }
   }
 );
@@ -70,9 +92,8 @@ const booksSlice = createSlice({
       })
       .addCase(fetchBooks.fulfilled, (state, action: PayloadAction<Book[]>) => {
         state.loading = false;
-        if (action.payload && action.payload.length > 0) {
-          state.items = action.payload;
-        }
+        state.items = action.payload || [];
+        state.totalElements = action.payload ? action.payload.length : 0;
       })
       .addCase(fetchBooks.rejected, (state, action) => {
         state.loading = false;

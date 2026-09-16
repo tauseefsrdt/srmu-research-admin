@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FileText, Search, RefreshCw, Loader2, X, Award } from 'lucide-react';
+import { FileText, Search, RefreshCw, Loader2, X } from 'lucide-react';
 import { gsap } from 'gsap';
 import PaperCard from '../components/patentsCard';
 import Pagination from '../components/Pagination';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
 import { fetchPatents } from '../store/slices/patentsSlice';
-import { getDepartments } from '../data/researchService';
 import { Patent, Department } from '../types';
 
 function PapersPage() {
@@ -15,14 +14,33 @@ function PapersPage() {
   const { items: allPatents, loading } = useAppSelector((state) => state.patents);
   const [searchParams, setSearchParams] = useSearchParams();
 
-  const [departments, setDepartments] = useState<Department[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 9;
 
-  // Filters — always read live from URL
-  const search = searchParams.get('search') || '';
+  // Filters from URL
+  const urlSearch = searchParams.get('search') || '';
+  const [search, setSearch] = useState(urlSearch);
   const selectedDept = searchParams.get('department') || 'All';
   const selectedYear = searchParams.get('year') || '';
+
+  useEffect(() => {
+    setSearch(urlSearch);
+  }, [urlSearch]);
+
+  // Debounced API fetch directly from MySQL
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      dispatch(
+        fetchPatents({
+          sessionCode: '2025-26',
+          search: search.trim() || undefined,
+          year: selectedYear || undefined,
+        })
+      );
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [dispatch, search, selectedYear]);
 
   // Helper to update URL params
   const updateParam = (key: string, value: string) => {
@@ -35,45 +53,59 @@ function PapersPage() {
     setSearchParams(next, { replace: true });
   };
 
-  const resetFilters = () => setSearchParams({}, { replace: true });
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    updateParam('search', val);
+  };
 
-  useEffect(() => {
-    dispatch(fetchPatents('2025-26'));
-  }, [dispatch]);
+  const resetFilters = () => {
+    setSearch('');
+    setSearchParams({}, { replace: true });
+    dispatch(fetchPatents({ sessionCode: '2025-26' }));
+  };
 
-  useEffect(() => {
-    try {
-      setDepartments(getDepartments());
-    } catch (err) {
-      console.error('Error getting departments:', err);
-    }
-  }, []);
+  const departments = useMemo(() => {
+    const map = new Map<string, number>();
+    allPatents.forEach((p: any) => {
+      const dept = (p.departmentKey || p.department || '').trim();
+      if (dept) {
+        map.set(dept, (map.get(dept) || 0) + 1);
+      }
+    });
+    const list: Department[] = Array.from(map.entries()).map(([name, count]) => ({
+      key: name.toLowerCase().replace(/\s+/g, '-'),
+      name,
+      count,
+    }));
+    return list;
+  }, [allPatents]);
 
   const papers = useMemo(() => {
     return allPatents.filter((item: Patent) => {
-      if (search && search.trim()) {
-        const term = search.trim().toLowerCase();
-        const match =
-          (item.title && item.title.toLowerCase().includes(term)) ||
-          (item.patenterName && item.patenterName.toLowerCase().includes(term)) ||
-          (item.authors && item.authors.toLowerCase().includes(term)) ||
-          (item.patentNumber && item.patentNumber.toLowerCase().includes(term)) ||
-          (item.abstract && item.abstract.toLowerCase().includes(term));
-        if (!match) return false;
-      }
-      if (selectedYear) {
-        const itemYear = item.yearOfAward || item.year;
-        if (!itemYear || !String(itemYear).includes(String(selectedYear).trim())) {
+      if (selectedDept && selectedDept !== 'All') {
+        const itemDept = ((item as any).departmentKey || (item as any).department || '').trim();
+        if (itemDept !== selectedDept.trim()) {
           return false;
         }
       }
       return true;
     });
-  }, [allPatents, search, selectedYear]);
+  }, [allPatents, selectedDept]);
 
-  const count = papers.length;
+  // Reset page on filter change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedDept, selectedYear]);
 
-  // Page entrance animation
+  const totalPages = Math.ceil(papers.length / ITEMS_PER_PAGE);
+  const paginatedPapers = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return papers.slice(start, start + ITEMS_PER_PAGE);
+  }, [papers, currentPage]);
+
+  const hasFilters = Boolean(search || (selectedDept && selectedDept !== 'All') || selectedYear);
+
+  // GSAP entrance animation
   useEffect(() => {
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion || !pageRef.current) return;
@@ -94,67 +126,63 @@ function PapersPage() {
     return () => ctx.revert();
   }, []);
 
-  const hasFilters = search || selectedDept !== 'All' || selectedYear;
-
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, selectedDept, selectedYear]);
-
-  const totalPages = Math.ceil(papers.length / ITEMS_PER_PAGE);
-  const currentPapers = papers.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
-
   return (
     <div ref={pageRef} className="archive-page home-width py-8 sm:py-12">
-      
-      {/* Header */}
+      {/* Page Header */}
       <div className="page-hero-copy mb-8">
         <div className="archive-hero-reveal eyebrow">
-          <span className="eyebrow-dot" />
+          <span className="eyebrow-dot amber" />
           <FileText className="w-4 h-4" />
-          <span>Research Showcase</span>
+          <span>Intellectual Property &amp; Innovations</span>
         </div>
         <h1 className="archive-hero-reveal text-3xl sm:text-4xl md:text-5xl font-bold font-serif text-[#1F2937] tracking-tight mt-2 mb-3">
-          Granted and Published <em>Patents</em> 
+          Patents &amp; <em> <br />Innovations Repository.</em>
         </h1>
         <p className="archive-hero-reveal text-base sm:text-lg text-[#6B7280] max-w-2xl">
-          Browse and filter faculty research publications, patents, and scientific contributions.
+          Patents published and granted by the Office of the Controller General of Patents, Designs &amp; Trade Marks.
         </p>
       </div>
 
       {/* Filter Toolbar */}
-      <div className="archive-filter-reveal filter-bar papers-filter-bar mb-6 p-4 rounded-2xl bg-white/80 border border-[#0A4A8F]/15 shadow-md backdrop-blur-md">
-        
+      <div className="archive-filter-reveal filter-bar mb-6 p-4 rounded-2xl bg-white/80 border border-[#0A4A8F]/15 shadow-md backdrop-blur-md">
         {/* Search Field */}
         <div className="filter-search flex-1">
           <Search className="text-[#0A4A8F]" />
           <input
             type="text"
             value={search}
-            onChange={(e) => updateParam('search', e.target.value)}
-            placeholder="Filter by title, author, keyword, or journal..."
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Search patents by title, inventor, application no..."
             className="archive-input"
           />
+          {search && (
+            <button
+              onClick={() => handleSearchChange('')}
+              className="p-1 text-slate-400 hover:text-slate-600 rounded-full"
+              title="Clear search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Department Filter */}
-        <div className="filter-select department-select">
-          <select
-            value={selectedDept}
-            onChange={(e) => updateParam('department', e.target.value)}
-            className="archive-input"
-          >
-            <option value="All">All Faculties </option>
-            {departments.map((dept) => (
-              <option key={dept.key} value={dept.key}>
-                {dept.name} ({dept.count})
-              </option>
-            ))}
-          </select>
-        </div>
+        {departments.length > 0 && (
+          <div className="filter-select department-select">
+            <select
+              value={selectedDept}
+              onChange={(e) => updateParam('department', e.target.value)}
+              className="archive-input"
+            >
+              <option value="All">All Departments</option>
+              {departments.map((dept) => (
+                <option key={dept.key} value={dept.name}>
+                  {dept.name} ({dept.count})
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
 
         {/* Year Filter */}
         <div className="filter-select">
@@ -178,74 +206,56 @@ function PapersPage() {
             title="Reset filters"
           >
             <RefreshCw className="w-4 h-4" style={{ color: 'var(--color-deep-teal)' }} />
-            <span>Reset All</span>
+            <span>Reset</span>
           </button>
         )}
-
       </div>
 
-      {/* Active Filter Badge */}
-      {selectedDept !== 'All' && (
-        <div className="flex items-center gap-2 mb-4">
-          <span className="text-xs text-[#6B7280] font-mono">Filtered by:</span>
-          <span className="active-filter-chip">
-            {departments.find(d => d.key === selectedDept)?.name || selectedDept}
-            <button onClick={() => updateParam('department', 'All')} aria-label="Clear filter">
-              <X size={12} />
-            </button>
-          </span>
-        </div>
-      )}
-
-      {/* Results Count Banner */}
-      <div className="flex items-center justify-between mb-5 px-1">
-        <div className="results-count-badge">
-          <strong>{count}</strong>
-          patents
-          {hasFilters && <span className="text-[#6B7280] ml-1 font-normal">(filtered)</span>}
-        </div>
-        {loading && <Loader2 className="loader-on-theme animate-spin w-4 h-4 text-[#0A4A8F]" />}
-      </div>
-
-      {/* Grid */}
+      {/* Results Section */}
       {loading ? (
-        <div className="empty-state min-h-[280px] flex flex-col items-center justify-center p-12 bg-white/60 rounded-2xl border border-[#0A4A8F]/10">
-          <Loader2 className="loader-on-theme animate-spin w-8 h-8 text-[#0A4A8F] mb-3" />
-          <p className="text-sm text-[#6B7280]">Loading research papers...</p>
+        <div className="py-20 flex flex-col items-center justify-center text-[#0A4A8F]">
+          <Loader2 className="w-10 h-10 animate-spin mb-4" />
+          <p className="font-mono text-sm font-semibold tracking-wider">LOADING PATENTS FROM DATABASE...</p>
         </div>
       ) : papers.length === 0 ? (
-        <div className="empty-state min-h-[280px] flex flex-col items-center justify-center p-12 bg-white/60 rounded-2xl border border-[#0A4A8F]/10 text-center">
-          <FileText className="w-10 h-10 text-[#9CA3AF] mb-3 stroke-[1.5]" />
-          <p className="font-semibold text-[#1F2937]">No matching research papers found</p>
-          <p className="text-xs text-[#6B7280] mt-1">The selected department or filter has no matching papers.</p>
+        <div className="py-16 text-center bg-white/40 border border-dashed border-slate-300 rounded-3xl p-8">
+          <p className="text-lg font-bold text-slate-700">No patents match your search criteria</p>
+          <p className="text-sm text-slate-500 mt-1">Try adjusting the search terms or resetting the active filters.</p>
           {hasFilters && (
             <button
               onClick={resetFilters}
-              className="btn-ghost inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-full border border-[#0A4A8F]/20 text-xs font-medium text-[#0A4A8F]"
+              className="mt-4 px-4 py-2 rounded-full bg-[#0A4A8F] text-white text-xs font-mono font-semibold"
             >
-              <RefreshCw size={13} />
-              <span>Clear All Filters</span>
+              Reset Filters
             </button>
           )}
         </div>
       ) : (
         <>
+          <div className="flex items-center justify-between text-xs font-mono text-slate-500 mb-4 px-1">
+            <span>Showing <strong>{paginatedPapers.length}</strong> of <strong>{papers.length}</strong> patents</span>
+            <span>Session 2025–26</span>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {currentPapers.map((paper) => (
-              <PaperCard key={paper.id} paper={paper} />
+            {paginatedPapers.map((paper: any) => (
+              <PaperCard key={paper.id || paper.srNo} paper={paper} />
             ))}
           </div>
 
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            totalItems={papers.length}
-            itemsPerPage={ITEMS_PER_PAGE}
-          />
+          {totalPages > 1 && (
+            <div className="mt-8 flex justify-center">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                totalItems={papers.length}
+                itemsPerPage={ITEMS_PER_PAGE}
+              />
+            </div>
+          )}
         </>
       )}
-
     </div>
   );
 }

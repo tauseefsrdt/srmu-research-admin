@@ -1,38 +1,63 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '../../api/apiClient';
 import { ResearchPaper, Department } from '../../types';
-import { researchPapers as fallbackPapers } from '../../data/data';
+
+interface FetchPublicationsParams {
+  sessionCode?: string;
+  search?: string;
+  department?: string;
+  year?: string;
+  page?: number;
+  size?: number;
+}
 
 interface PublicationsState {
   items: ResearchPaper[];
   departments: Department[];
+  totalElements: number;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: PublicationsState = {
-  items: (fallbackPapers as any[]).map((p, idx) => ({
-    ...p,
-    id: p._id || p.srNo || idx + 1,
-    year: p.yearOfPublication,
-    journal: p.journalName,
-    issn: p.issnNumber,
-    link: p.ugcRecognitionLink,
-  })),
+  items: [],
   departments: [],
+  totalElements: 0,
   loading: false,
   error: null,
 };
 
 export const fetchPublications = createAsyncThunk(
   'publications/fetchPublications',
-  async (sessionCode: string = '2025-26', { rejectWithValue }) => {
+  async (params: FetchPublicationsParams | string = {}, { rejectWithValue }) => {
     try {
-      const res = await api.get('/research-items/by-category/PUBLICATION', {
-        params: { sessionCode },
-      });
-      if (res.data?.data && res.data.data.length > 0) {
-        return res.data.data.map((item: any, idx: number) => ({
+      const options: FetchPublicationsParams =
+        typeof params === 'string' ? { sessionCode: params } : params;
+
+      const hasAdvancedParams = options.search || options.year || options.department || (options.page !== undefined);
+
+      let res;
+      if (hasAdvancedParams) {
+        res = await api.get('/research-items', {
+          params: {
+            categoryCode: 'PUBLICATION',
+            sessionCode: options.sessionCode || '2025-26',
+            search: options.search || undefined,
+            year: options.year || undefined,
+            page: options.page ?? 0,
+            size: options.size ?? 500,
+          },
+        });
+      } else {
+        res = await api.get('/research-items/by-category/PUBLICATION', {
+          params: { sessionCode: options.sessionCode || '2025-26' },
+        });
+      }
+
+      const rawList = res.data?.data?.content || res.data?.data || [];
+
+      if (Array.isArray(rawList)) {
+        return rawList.map((item: any, idx: number) => ({
           srNo: item.srNo || idx + 1,
           _id: item.id,
           id: item.id,
@@ -53,7 +78,7 @@ export const fetchPublications = createAsyncThunk(
       }
       return [];
     } catch (err: any) {
-      return rejectWithValue(err.message || 'Failed to fetch publications');
+      return rejectWithValue(err.response?.data?.message || err.message || 'Failed to fetch publications');
     }
   }
 );
@@ -70,10 +95,10 @@ const publicationsSlice = createSlice({
       })
       .addCase(fetchPublications.fulfilled, (state, action: PayloadAction<ResearchPaper[]>) => {
         state.loading = false;
-        if (action.payload && action.payload.length > 0) {
-          state.items = action.payload;
-        }
-        // Compute departments
+        state.items = action.payload || [];
+        state.totalElements = action.payload ? action.payload.length : 0;
+
+        // Compute departments dynamically from live backend data
         const deptCounts: Record<string, number> = {};
         state.items.forEach((p) => {
           const dept = (p.department || '').trim();

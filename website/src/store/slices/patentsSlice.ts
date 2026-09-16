@@ -1,37 +1,62 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '../../api/apiClient';
 import { Patent, Department } from '../../types';
-import { patents as fallbackPatents } from '../../data/data';
+
+interface FetchPatentsParams {
+  sessionCode?: string;
+  search?: string;
+  year?: string;
+  page?: number;
+  size?: number;
+}
 
 interface PatentsState {
   items: Patent[];
   departments: Department[];
+  totalElements: number;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: PatentsState = {
-  items: (fallbackPatents as any[]).map((p, idx) => ({
-    ...p,
-    id: p._id || p.srNo || idx + 1,
-    authors: p.patenterName,
-    year: p.yearOfAward,
-    abstract: p.patentNumber,
-  })),
+  items: [],
   departments: [],
+  totalElements: 0,
   loading: false,
   error: null,
 };
 
 export const fetchPatents = createAsyncThunk(
   'patents/fetchPatents',
-  async (sessionCode: string = '2025-26', { rejectWithValue }) => {
+  async (params: FetchPatentsParams | string = {}, { rejectWithValue }) => {
     try {
-      const res = await api.get('/research-items/by-category/PATENT', {
-        params: { sessionCode },
-      });
-      if (res.data?.data && res.data.data.length > 0) {
-        return res.data.data.map((item: any, idx: number) => ({
+      const options: FetchPatentsParams =
+        typeof params === 'string' ? { sessionCode: params } : params;
+
+      const hasAdvancedParams = options.search || options.year || (options.page !== undefined);
+
+      let res;
+      if (hasAdvancedParams) {
+        res = await api.get('/research-items', {
+          params: {
+            categoryCode: 'PATENT',
+            sessionCode: options.sessionCode || '2025-26',
+            search: options.search || undefined,
+            year: options.year || undefined,
+            page: options.page ?? 0,
+            size: options.size ?? 500,
+          },
+        });
+      } else {
+        res = await api.get('/research-items/by-category/PATENT', {
+          params: { sessionCode: options.sessionCode || '2025-26' },
+        });
+      }
+
+      const rawList = res.data?.data?.content || res.data?.data || [];
+
+      if (Array.isArray(rawList)) {
+        return rawList.map((item: any, idx: number) => ({
           srNo: item.srNo || idx + 1,
           _id: item.id,
           id: item.id,
@@ -40,13 +65,15 @@ export const fetchPatents = createAsyncThunk(
           patentNumber: item.identifier,
           abstract: item.identifier,
           title: item.title,
+          department: item.department || '',
+          departmentKey: item.department || '',
           yearOfAward: item.eventOrAwardDate || item.publicationYear || '',
           year: item.eventOrAwardDate || item.publicationYear || '',
         }));
       }
       return [];
     } catch (err: any) {
-      return rejectWithValue(err.message || 'Failed to fetch patents');
+      return rejectWithValue(err.response?.data?.message || err.message || 'Failed to fetch patents');
     }
   }
 );
@@ -63,9 +90,8 @@ const patentsSlice = createSlice({
       })
       .addCase(fetchPatents.fulfilled, (state, action: PayloadAction<Patent[]>) => {
         state.loading = false;
-        if (action.payload && action.payload.length > 0) {
-          state.items = action.payload;
-        }
+        state.items = action.payload || [];
+        state.totalElements = action.payload ? action.payload.length : 0;
       })
       .addCase(fetchPatents.rejected, (state, action) => {
         state.loading = false;

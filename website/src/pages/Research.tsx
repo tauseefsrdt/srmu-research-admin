@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { Bookmark, Search, RefreshCw, Loader2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { Bookmark, Search, RefreshCw, Loader2, X } from 'lucide-react';
 import { gsap } from 'gsap';
 import ResearchCard from '../components/ResearchCard';
 import { useAppDispatch, useAppSelector } from '../store/hooks';
@@ -10,50 +11,46 @@ function IndexedPage() {
   const pageRef = useRef<HTMLDivElement>(null);
   const dispatch = useAppDispatch();
   const { items: allPapers, departments, loading } = useAppSelector((state) => state.publications);
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  // Local UI Filters
-  const [search, setSearch] = useState('');
-  const [selectedDept, setSelectedDept] = useState('All');
-  const [selectedYear, setSelectedYear] = useState('');
+  // URL search query synchronization
+  const urlSearch = searchParams.get('search') || '';
+  const [search, setSearch] = useState(urlSearch);
+  const [selectedDept, setSelectedDept] = useState(searchParams.get('department') || 'All');
+  const [selectedYear, setSelectedYear] = useState(searchParams.get('year') || '');
 
+  // Keep local search synced if URL changes
   useEffect(() => {
-    dispatch(fetchPublications('2025-26'));
-  }, [dispatch]);
+    setSearch(urlSearch);
+  }, [urlSearch]);
 
-  // Compute filtered papers in memory cleanly
+  // Debounced API fetch directly from MySQL backend
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      dispatch(
+        fetchPublications({
+          sessionCode: '2025-26',
+          search: search.trim() || undefined,
+          year: selectedYear || undefined,
+        })
+      );
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [dispatch, search, selectedYear]);
+
+  // In-memory department refinement for instant UX
   const filteredPapers = useMemo(() => {
     return allPapers.filter((item: ResearchPaper) => {
-      // Search match
-      if (search && search.trim()) {
-        const term = search.trim().toLowerCase();
-        const match =
-          (item.title && item.title.toLowerCase().includes(term)) ||
-          (item.authorName && item.authorName.toLowerCase().includes(term)) ||
-          (item.journalName && item.journalName.toLowerCase().includes(term)) ||
-          (item.department && item.department.toLowerCase().includes(term)) ||
-          (item.issnNumber && String(item.issnNumber).toLowerCase().includes(term)) ||
-          (item.ugcRecognitionLink && item.ugcRecognitionLink.toLowerCase().includes(term));
-        if (!match) return false;
-      }
-
-      // Department match
       if (selectedDept && selectedDept !== 'All') {
-        if ((item.department || '').trim() !== selectedDept.trim()) {
+        const itemDept = (item.department || '').trim();
+        if (itemDept !== selectedDept.trim()) {
           return false;
         }
       }
-
-      // Year match
-      if (selectedYear) {
-        const itemYear = item.yearOfPublication || item.year;
-        if (!itemYear || !String(itemYear).includes(String(selectedYear).trim())) {
-          return false;
-        }
-      }
-
       return true;
     });
-  }, [allPapers, search, selectedDept, selectedYear]);
+  }, [allPapers, selectedDept]);
 
   // Page entrance animation
   useEffect(() => {
@@ -76,10 +73,23 @@ function IndexedPage() {
     return () => ctx.revert();
   }, []);
 
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    const next = new URLSearchParams(searchParams);
+    if (val.trim()) {
+      next.set('search', val.trim());
+    } else {
+      next.delete('search');
+    }
+    setSearchParams(next, { replace: true });
+  };
+
   const resetFilters = () => {
     setSearch('');
     setSelectedDept('All');
     setSelectedYear('');
+    setSearchParams({}, { replace: true });
+    dispatch(fetchPublications({ sessionCode: '2025-26' }));
   };
 
   const hasFilters = search || selectedDept !== 'All' || selectedYear;
@@ -97,7 +107,7 @@ function IndexedPage() {
           Indexed <em> <br />Journal Publications.</em>
         </h1>
         <p className="archive-hero-reveal text-base sm:text-lg text-[#6B7280] max-w-2xl">
-          High-impact papers indexed in WoS and SCOPUS
+          High-impact papers indexed in WoS and SCOPUS (Live MySQL Data)
         </p>
       </div>
 
@@ -109,10 +119,19 @@ function IndexedPage() {
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
+            onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Search indexed paper title, author, journal..."
             className="archive-input"
           />
+          {search && (
+            <button
+              onClick={() => handleSearchChange('')}
+              className="p-1 text-slate-400 hover:text-slate-600 rounded-full"
+              title="Clear search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Department Filter */}

@@ -43,10 +43,19 @@ export default function DepartmentPage() {
 
   const currentSlug = id || "all";
 
-  // Dispatch Redux thunk on mount
+  // Dispatch Redux thunk on mount or when search query changes
   useEffect(() => {
-    dispatch(fetchDepartmentData("2025-26"));
-  }, [dispatch]);
+    const timer = setTimeout(() => {
+      dispatch(
+        fetchDepartmentData({
+          sessionCode: "2025-26",
+          search: searchQuery.trim() || undefined,
+        })
+      );
+    }, 200);
+
+    return () => clearTimeout(timer);
+  }, [dispatch, searchQuery]);
 
   // Sync Redux state to department data model
   useEffect(() => {

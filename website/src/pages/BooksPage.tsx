@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { BookOpen, Search, RefreshCw, Loader2 } from 'lucide-react';
+import { useSearchParams } from 'react-router-dom';
+import { BookOpen, Search, RefreshCw, Loader2, X } from 'lucide-react';
 import { gsap } from 'gsap';
 import BookCard from '../components/BookCard';
 import Pagination from '../components/Pagination';
@@ -11,46 +12,64 @@ function BooksPage() {
   const pageRef = useRef<HTMLDivElement>(null);
   const dispatch = useAppDispatch();
   const { items: allBooks, loading } = useAppSelector((state) => state.books);
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 9;
 
-  // Filters
-  const [search, setSearch] = useState('');
-  const [selectedYear, setSelectedYear] = useState('');
+  // Filters from URL
+  const urlSearch = searchParams.get('search') || '';
+  const [search, setSearch] = useState(urlSearch);
+  const [selectedYear, setSelectedYear] = useState(searchParams.get('year') || '');
 
   useEffect(() => {
-    dispatch(fetchBooks('2025-26'));
-  }, [dispatch]);
+    setSearch(urlSearch);
+  }, [urlSearch]);
 
-  const books = useMemo(() => {
-    return allBooks.filter((item: Book) => {
-      if (search && search.trim()) {
-        const term = search.trim().toLowerCase();
-        const match =
-          (item.title && item.title.toLowerCase().includes(term)) ||
-          (item.paperTitle && item.paperTitle.toLowerCase().includes(term)) ||
-          (item.bookOrChapterTitle && item.bookOrChapterTitle.toLowerCase().includes(term)) ||
-          (item.authors && (Array.isArray(item.authors) ? item.authors.join(' ') : item.authors).toLowerCase().includes(term)) ||
-          (item.teacherName && item.teacherName.toLowerCase().includes(term)) ||
-          (item.publisher && item.publisher.toLowerCase().includes(term)) ||
-          (item.publisherName && item.publisherName.toLowerCase().includes(term)) ||
-          (item.isbn && item.isbn.toLowerCase().includes(term)) ||
-          (item.isbnIssn && item.isbnIssn.toLowerCase().includes(term)) ||
-          (item.affiliatingInstitute && item.affiliatingInstitute.toLowerCase().includes(term));
-        if (!match) return false;
-      }
-      if (selectedYear) {
-        const itemYear = item.yearOfPublication || item.year;
-        if (!itemYear || !String(itemYear).includes(String(selectedYear).trim())) {
-          return false;
-        }
-      }
-      return true;
-    });
-  }, [allBooks, search, selectedYear]);
+  // Debounced API fetch directly from MySQL
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      dispatch(
+        fetchBooks({
+          sessionCode: '2025-26',
+          search: search.trim() || undefined,
+          year: selectedYear || undefined,
+        })
+      );
+    }, 200);
 
-  const count = books.length;
+    return () => clearTimeout(timer);
+  }, [dispatch, search, selectedYear]);
+
+  const handleSearchChange = (val: string) => {
+    setSearch(val);
+    const next = new URLSearchParams(searchParams);
+    if (val.trim()) {
+      next.set('search', val.trim());
+    } else {
+      next.delete('search');
+    }
+    setSearchParams(next, { replace: true });
+  };
+
+  const resetFilters = () => {
+    setSearch('');
+    setSelectedYear('');
+    setSearchParams({}, { replace: true });
+    dispatch(fetchBooks({ sessionCode: '2025-26' }));
+  };
+
+  const count = allBooks.length;
+  const totalPages = Math.ceil(count / ITEMS_PER_PAGE);
+
+  const paginatedBooks = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return allBooks.slice(start, start + ITEMS_PER_PAGE);
+  }, [allBooks, currentPage]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, selectedYear]);
 
   // Page entrance animation
   useEffect(() => {
@@ -73,55 +92,46 @@ function BooksPage() {
     return () => ctx.revert();
   }, []);
 
-  const resetFilters = () => {
-    setSearch('');
-    setSelectedYear('');
-  };
-
-  const hasFilters = Boolean(search || selectedYear);
-
-  // Reset page when filters change
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [search, selectedYear]);
-
-  const totalPages = Math.ceil(books.length / ITEMS_PER_PAGE);
-  const currentBooks = books.slice(
-    (currentPage - 1) * ITEMS_PER_PAGE,
-    currentPage * ITEMS_PER_PAGE
-  );
+  const hasFilters = search || selectedYear;
 
   return (
     <div ref={pageRef} className="archive-page home-width py-8 sm:py-12">
-      
       {/* Header */}
       <div className="page-hero-copy mb-8">
         <div className="archive-hero-reveal eyebrow">
-          <span className="eyebrow-dot" />
+          <span className="eyebrow-dot emerald" />
           <BookOpen className="w-4 h-4" />
           <span>Academic Books &amp; Chapters</span>
         </div>
         <h1 className="archive-hero-reveal text-3xl sm:text-4xl md:text-5xl font-bold font-serif text-[#1F2937] tracking-tight mt-2 mb-3">
-          Books &amp; <em>chapters.</em>
+          Books &amp; <em> <br />Chapters Published.</em>
         </h1>
         <p className="archive-hero-reveal text-base sm:text-lg text-[#6B7280] max-w-2xl">
-          Published books, edited volumes, and authored book chapters by university faculty.
+          Peer-reviewed monographs, international edited volumes, and textbook chapters by university faculty (Live Database).
         </p>
       </div>
 
       {/* Filter Toolbar */}
       <div className="archive-filter-reveal filter-bar mb-6 p-4 rounded-2xl bg-white/80 border border-[#0A4A8F]/15 shadow-md backdrop-blur-md">
-        
         {/* Search Field */}
         <div className="filter-search flex-1">
           <Search className="text-[#0A4A8F]" />
           <input
             type="text"
             value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search book title, author, publisher, ISBN..."
+            onChange={(e) => handleSearchChange(e.target.value)}
+            placeholder="Search book title, chapter, author, publisher, ISBN..."
             className="archive-input"
           />
+          {search && (
+            <button
+              onClick={() => handleSearchChange('')}
+              className="p-1 text-slate-400 hover:text-slate-600 rounded-full"
+              title="Clear search"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
 
         {/* Year Filter */}
@@ -149,48 +159,53 @@ function BooksPage() {
             <span>Reset</span>
           </button>
         )}
-
       </div>
 
-      {/* Count */}
-      <div className="flex items-center justify-between mb-5 px-1">
-        <div className="results-count-badge">
-          <strong>{count}</strong>
-          books and chapters
-        </div>
-        {loading && <Loader2 className="loader-on-theme animate-spin w-4 h-4 text-[#0A4A8F]" />}
-      </div>
-
-      {/* Grid */}
+      {/* Results Section */}
       {loading ? (
-        <div className="empty-state min-h-[240px] flex flex-col items-center justify-center p-12 bg-white/60 rounded-2xl border border-[#0A4A8F]/10">
-          <Loader2 className="loader-on-theme animate-spin w-8 h-8 text-[#0A4A8F] mb-3" />
-          <p className="text-sm text-[#6B7280]">Loading books...</p>
+        <div className="py-20 flex flex-col items-center justify-center text-[#0A4A8F]">
+          <Loader2 className="w-10 h-10 animate-spin mb-4" />
+          <p className="font-mono text-sm font-semibold tracking-wider">LOADING BOOKS FROM DATABASE...</p>
         </div>
-      ) : books.length === 0 ? (
-        <div className="empty-state min-h-[240px] flex flex-col items-center justify-center p-12 bg-white/60 rounded-2xl border border-[#0A4A8F]/10 text-center">
-          <BookOpen className="w-10 h-10 text-[#9CA3AF] mb-3 stroke-[1.5]" />
-          <p className="font-semibold text-[#1F2937]">No matching books found</p>
-          <p className="text-xs text-[#6B7280] mt-1">Try searching for other keywords or resetting filters</p>
+      ) : allBooks.length === 0 ? (
+        <div className="py-16 text-center bg-white/40 border border-dashed border-slate-300 rounded-3xl p-8">
+          <p className="text-lg font-bold text-slate-700">No books found matching your criteria</p>
+          <p className="text-sm text-slate-500 mt-1">Try adjusting the search query or year filter.</p>
+          {hasFilters && (
+            <button
+              onClick={resetFilters}
+              className="mt-4 px-4 py-2 rounded-full bg-[#0A4A8F] text-white text-xs font-mono font-semibold"
+            >
+              Reset Filters
+            </button>
+          )}
         </div>
       ) : (
         <>
+          <div className="flex items-center justify-between text-xs font-mono text-slate-500 mb-4 px-1">
+            <span>Showing <strong>{paginatedBooks.length}</strong> of <strong>{count}</strong> records</span>
+            <span>Session 2025–26</span>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {currentBooks.map((book) => (
-              <BookCard key={book.id} book={book} />
+            {paginatedBooks.map((book) => (
+              <BookCard key={book.id || book.slNo} book={book} />
             ))}
           </div>
 
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            totalItems={books.length}
-            itemsPerPage={ITEMS_PER_PAGE}
-          />
+          {totalPages > 1 && (
+            <div className="mt-8 flex justify-center">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                totalItems={count}
+                itemsPerPage={ITEMS_PER_PAGE}
+              />
+            </div>
+          )}
         </>
       )}
-
     </div>
   );
 }
