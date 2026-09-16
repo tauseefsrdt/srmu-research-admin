@@ -14,7 +14,8 @@ import {
   updateCategory,
   deleteCategory,
 } from '../store/thunks/masterThunks';
-import { Plus, Edit2, Trash2, CheckCircle2, Save, X, Building2, Calendar, Layers } from 'lucide-react';
+import { Plus, Edit2, Trash2, CheckCircle2, Save, X, Building2, Calendar, Layers, Upload } from 'lucide-react';
+import apiClient from '../api/client';
 
 interface MasterDataProps {
   type: 'institutes' | 'sessions' | 'categories';
@@ -34,6 +35,8 @@ export const MasterDataManager: React.FC<MasterDataProps> = ({
   const dispatch = useAppDispatch();
   const [modalOpen, setModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
+  const [uploadError, setUploadError] = useState('');
 
   const [instForm, setInstForm] = useState<Partial<Institute>>({
     code: '',
@@ -308,52 +311,52 @@ export const MasterDataManager: React.FC<MasterDataProps> = ({
 
       {/* Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className="w-full max-w-lg bg-slate-900 border border-slate-700 rounded-3xl p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-              <h3 className="font-bold text-base text-white">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-md">
+          <div className="w-full max-w-lg bg-white border border-slate-200/90 rounded-3xl p-6 shadow-2xl space-y-4 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <h3 className="font-bold text-base text-slate-900 font-serif">
                 {editingItem ? 'Edit Master Record' : 'Add New Master Record'}
               </h3>
               <button
                 onClick={() => setModalOpen(false)}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-700 p-1 rounded-lg hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleSave} className="space-y-3 text-xs">
+            <form onSubmit={handleSave} className="space-y-3.5 text-xs">
               {type === 'institutes' && (
                 <>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="text-[11px] font-mono text-slate-400 block mb-1">
+                      <label className="text-[11px] font-mono text-slate-600 font-bold block mb-1">
                         Code (e.g. IoT) *
                       </label>
                       <input
                         type="text"
                         value={instForm.code || ''}
                         onChange={(e) => setInstForm({ ...instForm, code: e.target.value })}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-mono focus:border-[#0A4A8F] focus:outline-none"
                         required
                       />
                     </div>
                     <div>
-                      <label className="text-[11px] font-mono text-slate-400 block mb-1">
+                      <label className="text-[11px] font-mono text-slate-600 font-bold block mb-1">
                         Slug (e.g. institute-of-technology) *
                       </label>
                       <input
                         type="text"
                         value={instForm.slug || ''}
                         onChange={(e) => setInstForm({ ...instForm, slug: e.target.value })}
-                        className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white font-mono"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-mono focus:border-[#0A4A8F] focus:outline-none"
                         required
                       />
                     </div>
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-mono text-slate-400 block mb-1">
+                    <label className="text-[11px] font-mono text-slate-600 font-bold block mb-1">
                       Title *
                     </label>
                     <input
@@ -361,13 +364,13 @@ export const MasterDataManager: React.FC<MasterDataProps> = ({
                       value={instForm.title || ''}
                       onChange={(e) => setInstForm({ ...instForm, title: e.target.value })}
                       placeholder="e.g. Institute of Technology"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-[#0A4A8F] focus:outline-none"
                       required
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-mono text-slate-400 block mb-1">
+                    <label className="text-[11px] font-mono text-slate-600 font-bold block mb-1">
                       Department Count Label
                     </label>
                     <input
@@ -375,24 +378,109 @@ export const MasterDataManager: React.FC<MasterDataProps> = ({
                       value={instForm.departmentCountLabel || ''}
                       onChange={(e) => setInstForm({ ...instForm, departmentCountLabel: e.target.value })}
                       placeholder="e.g. 5 DEPARTMENTS"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-[#0A4A8F] focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-mono text-slate-400 block mb-1">
+                    <label className="text-[11px] font-mono text-slate-600 font-bold block mb-1">
                       Description
                     </label>
                     <textarea
                       rows={3}
                       value={instForm.description || ''}
                       onChange={(e) => setInstForm({ ...instForm, description: e.target.value })}
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-[#0A4A8F] focus:outline-none"
                     />
                   </div>
 
                   <div>
-                    <label className="text-[11px] font-mono text-slate-400 block mb-1">
+                    <label className="text-[11px] font-mono text-slate-600 font-bold block mb-1">
+                      Cover Image (Upload from Computer or enter Path/URL)
+                    </label>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-3">
+                        <label className={`cursor-pointer inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-white text-xs font-semibold shadow-xs transition-colors shrink-0 ${
+                          uploadingImage ? 'bg-slate-400 cursor-not-allowed' : 'bg-[#0A4A8F] hover:bg-[#0C5CA8]'
+                        }`}>
+                          {uploadingImage ? (
+                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <Upload className="w-3.5 h-3.5" />
+                          )}
+                          <span>{uploadingImage ? 'Uploading...' : 'Upload Image'}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            disabled={uploadingImage}
+                            className="hidden"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (!file) return;
+                              setUploadingImage(true);
+                              setUploadError('');
+                              const uploadFormData = new FormData();
+                              uploadFormData.append('file', file);
+                              try {
+                                const response = await apiClient.post('/files/upload', uploadFormData, {
+                                  headers: {
+                                    'Content-Type': 'multipart/form-data',
+                                  },
+                                });
+                                const data = response.data?.data;
+                                if (data?.relativeUrl || data?.fileUrl) {
+                                  setInstForm((prev) => ({
+                                    ...prev,
+                                    image: data.relativeUrl || data.fileUrl,
+                                  }));
+                                } else {
+                                  setUploadError('Upload failed: Invalid response');
+                                }
+                              } catch (err: any) {
+                                setUploadError(err.message || 'Could not upload image');
+                              } finally {
+                                setUploadingImage(false);
+                                // reset file input value
+                                e.target.value = '';
+                              }
+                            }}
+                          />
+                        </label>
+                        <input
+                          type="text"
+                          value={instForm.image || ''}
+                          onChange={(e) => setInstForm({ ...instForm, image: e.target.value })}
+                          placeholder="e.g. /Images/c1.webp or uploaded URL"
+                          className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-mono text-xs focus:border-[#0A4A8F] focus:outline-none"
+                        />
+                        {instForm.image && (
+                          <div className="relative group/thumb">
+                            <div className="w-14 h-11 rounded-lg overflow-hidden border border-slate-200 bg-slate-100 shrink-0 shadow-inner">
+                              <img
+                                src={instForm.image}
+                                alt="Preview"
+                                className="w-full h-full object-cover"
+                                onError={(e) => {
+                                  (e.target as HTMLElement).style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {uploadError && (
+                        <p className="text-xs text-rose-600 font-medium">{uploadError}</p>
+                      )}
+
+                      <p className="text-[10px] text-slate-400 font-mono">
+                        💡 Click <b>Upload Image</b> to pick any JPG, PNG, or WEBP file from your device, or choose from existing presets (/Images/c1.webp to c9.webp).
+                      </p>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="text-[11px] font-mono text-slate-600 font-bold block mb-1">
                       Programs (comma separated)
                     </label>
                     <input
@@ -405,7 +493,7 @@ export const MasterDataManager: React.FC<MasterDataProps> = ({
                         })
                       }
                       placeholder="e.g. Civil Engineering, Computer Science"
-                      className="w-full bg-slate-800 border border-slate-700 rounded-xl px-3 py-2 text-white"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 focus:border-[#0A4A8F] focus:outline-none"
                     />
                   </div>
                 </>

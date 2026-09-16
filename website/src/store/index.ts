@@ -4,6 +4,7 @@ import patentsReducer from './slices/patentsSlice';
 import booksReducer from './slices/booksSlice';
 import departmentReducer from './slices/departmentSlice';
 import statsReducer from './slices/statsSlice';
+import institutesReducer from './slices/institutesSlice';
 
 export const store = configureStore({
   reducer: {
@@ -12,6 +13,7 @@ export const store = configureStore({
     books: booksReducer,
     department: departmentReducer,
     stats: statsReducer,
+    institutes: institutesReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({

@@ -100,11 +100,7 @@ export const AuthView: React.FC<AuthModalProps> = ({ onSuccess }) => {
             </div>
           </div>
 
-          {/* Quick Credential Hint */}
-          <div className="p-2.5 rounded-xl bg-[#FFF8E7] border border-[#FFB703]/30 text-[10px] font-mono text-amber-900/80 flex items-center justify-between">
-            <span>Pre-seeded Database Credentials:</span>
-            <span className="text-[#0A4A8F] font-bold">admin@srmu.ac.in</span>
-          </div>
+
 
           <button
             type="submit"
@@ -115,7 +111,7 @@ export const AuthView: React.FC<AuthModalProps> = ({ onSuccess }) => {
               <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
             ) : (
               <>
-                <span>Sign In to Admin Console</span>
+                <span>Sign In to Admin</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}

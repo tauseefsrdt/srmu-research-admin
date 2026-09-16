@@ -9,7 +9,7 @@ public class WebCorsConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**")
+        registry.addMapping("/**")
                 .allowedOrigins(
                         "http://localhost:5173",
                         "http://localhost:5174",
@@ -22,5 +22,18 @@ public class WebCorsConfig implements WebMvcConfigurer {
                 .allowedHeaders("*")
                 .allowCredentials(true)
                 .maxAge(3600);
+    }
+
+    @Override
+    public void addResourceHandlers(org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry registry) {
+        java.nio.file.Path rootImages = java.nio.file.Paths.get(System.getProperty("user.dir"));
+        if (rootImages.endsWith("backend")) {
+            rootImages = rootImages.getParent().getParent();
+        } else if (rootImages.endsWith("admin")) {
+            rootImages = rootImages.getParent();
+        }
+        rootImages = rootImages.resolve("images");
+        registry.addResourceHandler("/images/**")
+                .addResourceLocations("file:" + rootImages.toAbsolutePath().toString().replace("\\", "/") + "/");
     }
 }

@@ -8,10 +8,24 @@ import {
   Users,
   ExternalLink,
   ChevronRight,
-  LogOut
+  LogOut,
+  BookOpen,
+  Lightbulb,
+  Bookmark,
+  X
 } from 'lucide-react';
 
-export type AdminTab = 'dashboard' | 'research' | 'theses' | 'faculty' | 'institutes' | 'sessions' | 'categories';
+export type AdminTab =
+  | 'dashboard'
+  | 'research'
+  | 'publications'
+  | 'patents'
+  | 'books'
+  | 'theses'
+  | 'faculty'
+  | 'institutes'
+  | 'sessions'
+  | 'categories';
 
 interface SidebarProps {
   activeTab: AdminTab;
@@ -21,6 +35,8 @@ interface SidebarProps {
   sessions: { sessionCode: string; name: string }[];
   currentUser: { name?: string; email?: string; designation?: string } | null;
   onLogout: () => void;
+  isMobileOpen?: boolean;
+  onCloseMobile?: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -31,11 +47,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
   sessions,
   currentUser,
   onLogout,
+  isMobileOpen,
+  onCloseMobile,
 }) => {
   const navItems = [
     { id: 'dashboard', label: 'Overview Dashboard', icon: LayoutDashboard },
-    { id: 'research', label: 'Research Data (CRUD)', icon: Layers },
-    { id: 'theses', label: 'Theses Awarded 25-26', icon: GraduationCap },
+    { id: 'publications', label: 'Research Publications', icon: BookOpen },
+    { id: 'patents', label: 'Patents', icon: Lightbulb },
+    { id: 'books', label: 'Books & Chapters', icon: Bookmark },
+    { id: 'theses', label: 'Theses Awarded', icon: GraduationCap },
+    { id: 'research', label: 'All Research Data', icon: Layers },
     { id: 'faculty', label: 'Faculty & Seat Matrix', icon: Users },
     { id: 'institutes', label: 'Institutes Master', icon: Building2 },
     { id: 'sessions', label: 'Academic Sessions', icon: Calendar },
@@ -43,72 +64,98 @@ export const Sidebar: React.FC<SidebarProps> = ({
   ];
 
   return (
-    <aside className="w-64 bg-white/95 backdrop-blur-xl border-r border-[#0A4A8F]/15 flex flex-col justify-between shrink-0 select-none shadow-lg z-20">
-      <div>
-        {/* Brand Header */}
-        <div className="p-6 border-b border-slate-100 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#0A4A8F] to-[#0C5CA8] flex items-center justify-center text-white shadow-md shadow-[#0A4A8F]/20">
-            <GraduationCap className="w-6 h-6 text-[#FFB703]" />
-          </div>
-          <div>
-            <h1 className="font-bold text-sm text-[#0F172A] tracking-tight flex items-center gap-1.5 font-serif">
-              SRMU Research
-              <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-[#0A4A8F]/10 text-[#0A4A8F] border border-[#0A4A8F]/20">
-                ADMIN
-              </span>
-            </h1>
-            <p className="text-xs text-slate-500 font-mono">Dynamic Data Hub</p>
-          </div>
-        </div>
+    <>
+      {/* Mobile Backdrop Overlay */}
+      {isMobileOpen && (
+        <div
+          onClick={onCloseMobile}
+          className="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-xs lg:hidden transition-opacity"
+        />
+      )}
 
-        {/* Global Academic Session Selector */}
-        <div className="p-4 mx-3 my-4 rounded-2xl bg-gradient-to-br from-[#FFF8E7] to-[#FFF3D6] border border-[#FFB703]/30 shadow-xs">
-          <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-900/80 block mb-1.5">
-            Active Academic Session
-          </label>
-          <div className="flex items-center gap-2">
-            <Calendar className="w-4 h-4 text-amber-600 shrink-0" />
-            <select
-              value={selectedSession}
-              onChange={(e) => setSelectedSession(e.target.value)}
-              aria-label="Active Academic Session"
-              className="w-full bg-white border border-amber-300/80 rounded-xl text-xs font-semibold text-slate-800 py-1.5 px-2.5 focus:outline-none focus:border-[#0A4A8F] cursor-pointer shadow-xs"
+      <aside
+        className={`fixed lg:static inset-y-0 left-0 z-50 w-72 lg:w-64 bg-white/95 backdrop-blur-xl border-r border-[#0A4A8F]/15 flex flex-col justify-between shrink-0 select-none shadow-xl lg:shadow-lg transform transition-transform duration-300 ease-in-out ${
+          isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
+        }`}
+      >
+        <div className="overflow-y-auto">
+          {/* Brand Header */}
+          <div className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#0A4A8F] to-[#0C5CA8] flex items-center justify-center text-white shadow-md shadow-[#0A4A8F]/20">
+                <GraduationCap className="w-6 h-6 text-[#FFB703]" />
+              </div>
+              <div>
+                <h1 className="font-bold text-sm text-[#0F172A] tracking-tight flex items-center gap-1.5">
+                  SRMU Research
+                  <span className="text-[10px] font-mono font-bold px-1.5 py-0.5 rounded-full bg-[#0A4A8F]/10 text-[#0A4A8F] border border-[#0A4A8F]/20">
+                    ADMIN
+                  </span>
+                </h1>
+                <p className="text-xs text-slate-500 font-mono">Dynamic Data Hub</p>
+              </div>
+            </div>
+
+            {/* Mobile Close Button */}
+            <button
+              onClick={onCloseMobile}
+              className="lg:hidden p-1.5 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
             >
-              <option value="ALL">All Sessions Combined</option>
-              {sessions.map((s) => (
-                <option key={s.sessionCode} value={s.sessionCode}>
-                  {s.sessionCode} ({s.name})
-                </option>
-              ))}
-            </select>
+              <X className="w-5 h-5" />
+            </button>
           </div>
-        </div>
 
-        {/* Navigation Links */}
-        <nav className="px-3 space-y-1">
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => setActiveTab(item.id as AdminTab)}
-                className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
-                  isActive
-                    ? 'bg-[#0A4A8F] text-white font-semibold shadow-md shadow-[#0A4A8F]/20'
-                    : 'text-slate-600 hover:text-[#0A4A8F] hover:bg-slate-100/80'
-                }`}
+          {/* Global Academic Session Selector */}
+          <div className="p-4 mx-3 my-4 rounded-2xl bg-gradient-to-br from-[#FFF8E7] to-[#FFF3D6] border border-[#FFB703]/30 shadow-xs">
+            <label className="text-[10px] font-mono font-bold uppercase tracking-wider text-amber-900/80 block mb-1.5">
+              Active Academic Session
+            </label>
+            <div className="flex items-center gap-2">
+              <Calendar className="w-4 h-4 text-amber-600 shrink-0" />
+              <select
+                value={selectedSession}
+                onChange={(e) => setSelectedSession(e.target.value)}
+                aria-label="Active Academic Session"
+                className="w-full bg-white border border-amber-300/80 rounded-xl text-xs font-semibold text-slate-800 py-1.5 px-2.5 focus:outline-none focus:border-[#0A4A8F] cursor-pointer shadow-xs"
               >
-                <div className="flex items-center gap-3">
-                  <Icon className={`w-4 h-4 ${isActive ? 'text-[#FFB703]' : 'text-slate-400'}`} />
-                  <span>{item.label}</span>
-                </div>
-                {isActive && <ChevronRight className="w-3.5 h-3.5 text-white/80" />}
-              </button>
-            );
-          })}
-        </nav>
-      </div>
+                <option value="ALL">All Sessions Combined</option>
+                {sessions.map((s) => (
+                  <option key={s.sessionCode} value={s.sessionCode}>
+                    {s.sessionCode} ({s.name})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+
+          {/* Navigation Links */}
+          <nav className="px-3 space-y-1">
+            {navItems.map((item) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setActiveTab(item.id as AdminTab);
+                    if (onCloseMobile) onCloseMobile();
+                  }}
+                  className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                    isActive
+                      ? 'bg-[#0A4A8F] text-white font-semibold shadow-md shadow-[#0A4A8F]/20'
+                      : 'text-slate-600 hover:text-[#0A4A8F] hover:bg-slate-100/80'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-[#FFB703]' : 'text-slate-400'}`} />
+                    <span>{item.label}</span>
+                  </div>
+                  {isActive && <ChevronRight className="w-3.5 h-3.5 text-white/80" />}
+                </button>
+              );
+            })}
+          </nav>
+        </div>
 
       {/* Footer link to Public Portal & Logout */}
       <div className="p-4 border-t border-slate-100 space-y-2">
@@ -134,5 +181,6 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </button>
       </div>
     </aside>
+    </>
   );
 };

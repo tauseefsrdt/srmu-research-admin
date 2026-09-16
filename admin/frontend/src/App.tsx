@@ -24,7 +24,7 @@ import {
   selectResearchStats,
   selectResearchStatsLoading,
 } from './store/selectors';
-import { RefreshCw, ShieldCheck, LogOut } from 'lucide-react';
+import { RefreshCw, ShieldCheck, LogOut, Menu } from 'lucide-react';
 
 export function App() {
   const dispatch = useAppDispatch();
@@ -40,6 +40,8 @@ export function App() {
   const statsLoading = useAppSelector(selectResearchStatsLoading);
 
   const [activeTab, setActiveTab] = useState<AdminTab>('dashboard');
+
+  const [isMobileNavOpen, setIsMobileNavOpen] = useState(false);
 
   const loading = institutesLoading || masterLoading || statsLoading;
 
@@ -99,16 +101,27 @@ export function App() {
         sessions={sessions}
         currentUser={currentUser}
         onLogout={handleLogout}
+        isMobileOpen={isMobileNavOpen}
+        onCloseMobile={() => setIsMobileNavOpen(false)}
       />
 
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative z-10">
         {/* Top Navbar */}
-        <header className="h-16 bg-white/80 backdrop-blur-xl border-b border-[#0A4A8F]/15 flex items-center justify-between px-6 shrink-0 z-10 shadow-xs">
+        <header className="h-16 bg-white/80 backdrop-blur-xl border-b border-[#0A4A8F]/15 flex items-center justify-between px-4 sm:px-6 shrink-0 z-10 shadow-xs">
           <div className="flex items-center gap-3">
+            {/* Mobile Hamburger Button */}
+            <button
+              onClick={() => setIsMobileNavOpen(!isMobileNavOpen)}
+              className="lg:hidden p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-[#0A4A8F] transition-colors cursor-pointer border border-slate-200"
+              aria-label="Toggle navigation menu"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
             <div className="flex items-center gap-2 text-xs font-mono text-slate-500">
-              <span className="text-[#0A4A8F] font-bold">SRMU Research Console</span>
-              <span>/</span>
+              <span className="text-[#0A4A8F] font-bold hidden sm:inline">SRMU Research Console</span>
+              <span className="hidden sm:inline">/</span>
               <span className="text-slate-800 font-semibold uppercase tracking-wider">{activeTab}</span>
             </div>
           </div>
@@ -158,6 +171,36 @@ export function App() {
               sessions={sessions}
               categories={categories}
               activeSessionCode={selectedSession}
+            />
+          )}
+
+          {activeTab === 'publications' && (
+            <ResearchManager
+              institutes={institutes}
+              sessions={sessions}
+              categories={categories}
+              activeSessionCode={selectedSession}
+              categoryFilterOverride="PUBLICATION"
+            />
+          )}
+
+          {activeTab === 'patents' && (
+            <ResearchManager
+              institutes={institutes}
+              sessions={sessions}
+              categories={categories}
+              activeSessionCode={selectedSession}
+              categoryFilterOverride="PATENT"
+            />
+          )}
+
+          {activeTab === 'books' && (
+            <ResearchManager
+              institutes={institutes}
+              sessions={sessions}
+              categories={categories}
+              activeSessionCode={selectedSession}
+              categoryFilterOverride="BOOK"
             />
           )}
 

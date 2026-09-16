@@ -13,6 +13,7 @@ import { ScrollTrigger } from "gsap/ScrollTrigger";
 import MorphSlider from "../Effects/Morph-Slider";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { fetchStats } from "../store/slices/statsSlice";
+import { fetchWebsiteInstitutes } from "../store/slices/institutesSlice";
 import { Stats } from "../types";
 
 gsap.registerPlugin(ScrollTrigger);
@@ -66,16 +67,6 @@ const coPatronsList = [
   },
 ];
 
-import { DEPARTMENTS_LIST } from "../data/departmentData";
-
-const institutes = DEPARTMENTS_LIST.map((dept) => ({
-  id: dept.id,
-  src: dept.image,
-  title: dept.title,
-  text: dept.description,
-  department: dept.departmentCountLabel,
-}));
-
 interface HomePageProps {
   onSearchOpen?: () => void;
 }
@@ -90,6 +81,7 @@ function HomePage({ onSearchOpen }: HomePageProps) {
 
   const dispatch = useAppDispatch();
   const { stats, loading } = useAppSelector((state) => state.stats);
+  const { institutes } = useAppSelector((state) => state.institutes);
   const [activeProfile] = useState("message");
   const [isModalOpen, setIsModalOpen] = useState(false);
 
@@ -151,6 +143,7 @@ function HomePage({ onSearchOpen }: HomePageProps) {
   ---------------------------------- */
   useEffect(() => {
     dispatch(fetchStats("2025-26"));
+    dispatch(fetchWebsiteInstitutes());
   }, [dispatch]);
 
   /* ----------------------------------
