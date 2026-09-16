@@ -76,7 +76,7 @@ export const AuthView: React.FC<AuthModalProps> = ({ onSuccess }) => {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@srmu.ac.in"
+                placeholder="write email"
                 className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-[#0A4A8F]"
                 required
               />
