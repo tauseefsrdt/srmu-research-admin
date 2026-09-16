@@ -1,7 +1,6 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import api from '../../api/apiClient';
-import { ThesisAwarded } from '../../data/thesisAwardedData';
-import { VacantSeatRow } from '../../data/vacantSeatData';
+import { ThesisAwarded, VacantSeatRow } from '../../types';
 
 interface FetchDepartmentParams {
   sessionCode?: string;

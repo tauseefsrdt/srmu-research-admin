@@ -88,8 +88,8 @@ function Navbar({ onSearchToggle }: NavbarProps) {
         {/* Actions */}
         <div className="desktop-actions">
           {onSearchToggle && (
-            <button 
-              onClick={onSearchToggle} 
+            <button
+              onClick={onSearchToggle}
               className="nav-search"
               aria-label="Search research archive"
             >
@@ -111,21 +111,13 @@ function Navbar({ onSearchToggle }: NavbarProps) {
             <span>Explore research</span>
             <ArrowRight size={13} className="transition-transform group-hover:translate-x-0.5" />
           </Link>
-          <a
-            href="http://localhost:5174"
-            target="_blank"
-            rel="noreferrer"
-            className="hidden sm:inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-slate-900/5 hover:bg-[#0A4A8F]/10 text-slate-700 hover:text-[#0A4A8F] border border-slate-200 text-xs font-semibold transition-all"
-            title="Open Admin Portal"
-          >
-            <span>Admin</span>
-          </a>
+
         </div>
 
         {/* Mobile toggle */}
-        <button 
-          className="mobile-toggle" 
-          onClick={() => setIsOpen(!isOpen)} 
+        <button
+          className="mobile-toggle"
+          onClick={() => setIsOpen(!isOpen)}
           aria-label="Toggle menu"
         >
           {isOpen ? <X size={22} /> : <Menu size={22} />}
@@ -136,8 +128,8 @@ function Navbar({ onSearchToggle }: NavbarProps) {
       {isOpen && (
         <div className="mobile-menu">
           {onSearchToggle && (
-            <button 
-              onClick={() => { setIsOpen(false); onSearchToggle(); }} 
+            <button
+              onClick={() => { setIsOpen(false); onSearchToggle(); }}
               className="nav-search"
               style={{ width: '100%', marginBottom: 12, justifyContent: 'space-between' }}
             >
@@ -153,6 +145,7 @@ function Navbar({ onSearchToggle }: NavbarProps) {
                 background: 'rgba(10, 74, 143, 0.08)',
               }}>⌘K</kbd>
             </button>
+
           )}
 
           {navLinks.map((link) => {

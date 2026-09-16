@@ -23,7 +23,7 @@ import { gsap } from "gsap";
 import { useAppDispatch, useAppSelector } from "../store/hooks";
 import { fetchDepartmentData } from "../store/slices/departmentSlice";
 import { getDepartmentById, DEPARTMENTS_LIST, DepartmentInfo, setLiveThesesData, setLiveFacultyData } from "../data/departmentData";
-import { ThesisAwarded } from "../data/thesisAwardedData";
+import { ThesisAwarded } from "../types";
 import Pagination from "../components/Pagination";
 
 export default function DepartmentPage() {

@@ -12,6 +12,7 @@ export interface Patent {
   featured?: boolean;
   citations?: number;
   doi?: string;
+  department?: string;
   departmentKey?: string;
 }
 
@@ -82,4 +83,38 @@ export interface SearchResults {
   indexed: ResearchPaper[];
   books: Book[];
   total: number;
+}
+
+export interface ThesisAwarded {
+  id: string | number;
+  srNo: number;
+  rawFacultyInstitute: string;
+  institute: string;
+  department: string;
+  scholarName: string;
+  regNo: string;
+  scholarWithReg: string;
+  supervisors: string;
+  title: string;
+  rawTitle: string;
+  defenseDate: string;
+  academicSession: string;
+}
+
+export interface VacantSeatRow {
+  id: string | number;
+  rowIndex: number;
+  institute: string;
+  rawInstitute?: string;
+  department: string;
+  rawDepartment?: string | null;
+  totalPhD?: number;
+  rawTotalPhD?: number;
+  supervisorName: string;
+  rawSupervisorName?: string | null;
+  designation: string;
+  rawDesignation?: string | null;
+  designationSeatLimit: number;
+  allottedSeat: number;
+  noOfVacant: number;
 }
