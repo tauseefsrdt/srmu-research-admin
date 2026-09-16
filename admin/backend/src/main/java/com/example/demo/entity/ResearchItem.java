@@ -34,22 +34,22 @@ public class ResearchItem {
     @Column(nullable = false, columnDefinition = "TEXT")
     private String title;
 
-    @Column(length = 255)
+    @Column(columnDefinition = "TEXT")
     private String primaryAuthor; // Scholar name, Teacher name, Patenter name, First Author
 
     @Column(columnDefinition = "TEXT")
     private String coAuthors; // Supervisors, Co-inventors, Co-authors
 
-    @Column(length = 255)
+    @Column(columnDefinition = "TEXT")
     private String identifier; // Reg. No., Patent No., ISSN, ISBN
 
     @Column(columnDefinition = "TEXT")
     private String venue; // Journal Name, Publisher Name, Patent Office / Jurisdiction
 
-    @Column(length = 100)
-    private String eventOrAwardDate; // "16.07.2025" or "2025-04-04"
+    @Column(columnDefinition = "TEXT")
+    private String eventOrAwardDate; // "16.07.2025" or "2025-04-04" or Journal award string
 
-    @Column(length = 255)
+    @Column(columnDefinition = "TEXT")
     private String publicationYear; // "2025", "2026", or detailed period string
 
     @Column(columnDefinition = "TEXT")
