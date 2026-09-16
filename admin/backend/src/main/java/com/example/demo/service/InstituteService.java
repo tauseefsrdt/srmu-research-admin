@@ -48,6 +48,15 @@ public class InstituteService {
     public InstituteDto updateInstitute(Long id, InstituteDto dto) {
         Institute institute = instituteRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Institute not found with id: " + id));
+
+        String oldImage = institute.getImage();
+        String newImage = dto.getImage();
+
+        // If image was changed, clean up previous custom uploaded image from /images and /website/public/Images
+        if (oldImage != null && !oldImage.isBlank() && !oldImage.equalsIgnoreCase(newImage)) {
+            deleteImageFile(oldImage);
+        }
+
         mapDtoToEntity(dto, institute);
         Institute updated = instituteRepository.save(institute);
         return toDto(updated);
@@ -55,10 +64,45 @@ public class InstituteService {
 
     @Transactional
     public void deleteInstitute(Long id) {
-        if (!instituteRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Institute not found with id: " + id);
+        Institute institute = instituteRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Institute not found with id: " + id));
+        if (institute.getImage() != null) {
+            deleteImageFile(institute.getImage());
         }
-        instituteRepository.deleteById(id);
+        instituteRepository.delete(institute);
+    }
+
+    private void deleteImageFile(String imagePath) {
+        if (imagePath == null || imagePath.isBlank()) return;
+        try {
+            // Extract filename (e.g., from "/Images/img_64fdcb57.webp" or "http://localhost:8080/api/v1/files/img_64fdcb57.webp")
+            String fileName = imagePath;
+            if (fileName.contains("/")) {
+                fileName = fileName.substring(fileName.lastIndexOf("/") + 1);
+            }
+            if (fileName.contains("?")) {
+                fileName = fileName.substring(0, fileName.indexOf("?"));
+            }
+
+            // Only delete dynamically uploaded files starting with "img_" to preserve default preset assets like c1.webp
+            if (!fileName.startsWith("img_")) {
+                return;
+            }
+
+            java.nio.file.Path current = java.nio.file.Paths.get(System.getProperty("user.dir"));
+            java.nio.file.Path backendDir = current.endsWith("backend") ? current : current.resolve("admin").resolve("backend");
+            java.nio.file.Path root = current.endsWith("backend") ? current.getParent().getParent() : current;
+
+            // 1. Delete from backend /images folder
+            java.nio.file.Path backendImg = backendDir.resolve("images").resolve(fileName);
+            java.nio.file.Files.deleteIfExists(backendImg);
+
+            // 2. Delete from website/public/Images folder
+            java.nio.file.Path webImg = root.resolve("website").resolve("public").resolve("Images").resolve(fileName);
+            java.nio.file.Files.deleteIfExists(webImg);
+        } catch (Exception e) {
+            System.err.println("Could not delete old image file: " + e.getMessage());
+        }
     }
 
     public InstituteDto toDto(Institute entity) {

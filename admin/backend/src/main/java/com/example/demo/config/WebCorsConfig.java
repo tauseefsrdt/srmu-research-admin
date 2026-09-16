@@ -26,14 +26,10 @@ public class WebCorsConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry registry) {
-        java.nio.file.Path rootImages = java.nio.file.Paths.get(System.getProperty("user.dir"));
-        if (rootImages.endsWith("backend")) {
-            rootImages = rootImages.getParent().getParent();
-        } else if (rootImages.endsWith("admin")) {
-            rootImages = rootImages.getParent();
-        }
-        rootImages = rootImages.resolve("images");
+        java.nio.file.Path current = java.nio.file.Paths.get(System.getProperty("user.dir"));
+        java.nio.file.Path backendDir = current.endsWith("backend") ? current : current.resolve("admin").resolve("backend");
+        java.nio.file.Path backendImages = backendDir.resolve("images");
         registry.addResourceHandler("/images/**")
-                .addResourceLocations("file:" + rootImages.toAbsolutePath().toString().replace("\\", "/") + "/");
+                .addResourceLocations("file:" + backendImages.toAbsolutePath().toString().replace("\\", "/") + "/");
     }
 }

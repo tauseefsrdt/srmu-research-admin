@@ -21,16 +21,14 @@ import java.util.UUID;
 @RequestMapping("/api/v1/files")
 public class FileUploadController {
 
-    private Path getRootImagesDir() {
+    private Path getImagesDir() {
         Path current = Paths.get(System.getProperty("user.dir"));
-        // If running inside admin/backend, parent of admin is new-crud root
-        Path root = current;
-        if (root.endsWith("backend")) {
-            root = root.getParent().getParent();
-        } else if (root.endsWith("admin")) {
-            root = root.getParent();
+        // Ensure path resolves to admin/backend/images
+        Path backendDir = current;
+        if (!backendDir.endsWith("backend")) {
+            backendDir = backendDir.resolve("admin").resolve("backend");
         }
-        Path imagesDir = root.resolve("images");
+        Path imagesDir = backendDir.resolve("images");
         try {
             Files.createDirectories(imagesDir);
         } catch (IOException ignored) {}
@@ -51,14 +49,16 @@ public class FileUploadController {
             }
 
             String newFilename = "img_" + UUID.randomUUID().toString().substring(0, 8) + extension;
-            Path rootImagesDir = getRootImagesDir();
-            Path targetPath = rootImagesDir.resolve(newFilename);
+            Path imagesDir = getImagesDir();
+            Path targetPath = imagesDir.resolve(newFilename);
 
             Files.copy(file.getInputStream(), targetPath, StandardCopyOption.REPLACE_EXISTING);
 
-            // Also copy to website public directory for local vite dev server immediate access
+            // Also copy to website public directory for local website immediate rendering
             try {
-                Path websiteImagesDir = rootImagesDir.getParent().resolve("website").resolve("public").resolve("Images");
+                Path current = Paths.get(System.getProperty("user.dir"));
+                Path root = current.endsWith("backend") ? current.getParent().getParent() : current;
+                Path websiteImagesDir = root.resolve("website").resolve("public").resolve("Images");
                 Files.createDirectories(websiteImagesDir);
                 Files.copy(targetPath, websiteImagesDir.resolve(newFilename), StandardCopyOption.REPLACE_EXISTING);
             } catch (Exception ignored) {}
@@ -82,7 +82,7 @@ public class FileUploadController {
     @GetMapping("/{fileName:.+}")
     public ResponseEntity<byte[]> getFile(@PathVariable String fileName) {
         try {
-            Path filePath = getRootImagesDir().resolve(fileName);
+            Path filePath = getImagesDir().resolve(fileName);
             if (!Files.exists(filePath)) {
                 return ResponseEntity.notFound().build();
             }
